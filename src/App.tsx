@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Calendar, Users, FileText, BarChart2, Settings, Bell } from 'lucide-react'
+import { supabase } from './lib/supabase'
+import Login from './pages/Login'
+import type { Session } from '@supabase/supabase-js'
 
 const stats = [
   { label: "Today's Appointments", value: '24', color: 'bg-blue-50 text-blue-700' },
@@ -29,6 +33,32 @@ const statusColors: Record<string, string> = {
 }
 
 export default function App() {
+  const [session, setSession] = useState<Session | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (!session) return <Login />
+
   return (
     <div className="flex h-screen bg-gray-50">
       <aside className="w-60 bg-white border-r border-gray-200 flex flex-col">
@@ -54,11 +84,17 @@ export default function App() {
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
               DR
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-800">Dr. Reception</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800 truncate">{session.user.email}</p>
               <p className="text-xs text-gray-500">Admin</p>
             </div>
           </div>
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="w-full mt-3 text-xs text-gray-400 hover:text-red-500 transition-colors text-left"
+          >
+            Sign out
+          </button>
         </div>
       </aside>
 
